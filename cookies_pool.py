@@ -7,17 +7,13 @@
 ###############################################################################
 
 import json
-import base64
 import os
-import re
-import sys
 import time
 import logging
 import logging.config
 import argparse
 import asyncio
 from pyppeteer import launch
-from multiprocessing.dummy import Pool as ThreadPool
 from redis import StrictRedis
 import blog_conf
 
@@ -60,7 +56,7 @@ class CookiesPool(object):
         self.browser = None
         self.page = None
 
-    async def get_browser(self, headless=True):
+    async def get_browser(self, headless=True, autoClose=True):
         """
         打开浏览器返回浏览器第一个页面对象
         """
@@ -69,11 +65,12 @@ class CookiesPool(object):
         browser_args = ['--disable-infobars', ]
         # headless参数设为False，则变成有头模式
         headless = headless
-        autoClose = True
+        autoClose = autoClose
         if self.has_captcha:
             autoClose = False
             headless = False
-        browser = await launch(headless=headless, args=browser_args, autoClose=autoClose)
+        browser = await launch(headless=headless, args=browser_args,
+                               autoClose=autoClose)
         pages = await browser.pages()
         page1 = pages[0]
         # 设置页面视图大小
@@ -321,18 +318,27 @@ class CookiesPool(object):
             self.logger.exception(e)
         return False
 
+
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser('Cookies池管理工具')
 
-    parser.add_argument('-c', '--check', action='store_true', default=False, help='执行Cookies有效性检查')
+    support_plat = ['cnblogs', 'csdn', 'oschina', 'zhihu', 'segmentfault',
+                    'jianshu']
+
+    parser.add_argument('-c', '--check', action='store_true', default=False,
+                        help='执行Cookies有效性检查')
     parser.add_argument('-s', '--set', help='设置用户名和密码信息')
     parser.add_argument('-d', '--delete', help='删除用户名和密码信息')
-    parser.add_argument('-g', '--get', action='store_true', default=False, help='提取用户名和密码信息')
-    parser.add_argument('-l', '--load', default=None, help='文件中加载用户名和密码信息,格式(两列数据，分隔符为竖线)：username|password')
-    parser.add_argument('-p', '--post', default=None, help='发布Markdown文章,Markdown文件存放路径')
+    parser.add_argument('-g', '--get', action='store_true', default=False,
+                        help='提取用户名和密码信息')
+    parser.add_argument('-l', '--load', default=None,
+                        help='用户名和密码信息文件,格式(两列数据，分隔符为竖线)：username|password')
+    parser.add_argument('-p', '--post', default=None,
+                        help='发布Markdown文章,Markdown文件存放路径')
     parser.add_argument('-t', '--title', default=None, help='文章标题')
-    parser.add_argument('-m', '--plat', default=None, help='Blog平台信息')
+    parser.add_argument('-m', '--plat', default=None,
+                        help='Blog平台信息,支持平台:' + support_plat)
 
     # 调试模式开关
     parser.add_argument('-x', '--debug', default=True, help='调试模式')
@@ -347,10 +353,9 @@ if __name__ == '__main__':
     post = parse_result.post
     debug = parse_result.debug
     plat = parse_result.plat
-
     conf_list = blog_conf.config_list
 
-    if post:
+    if post:   # 发布文章
         print("start to post article:")
         if not os.path.exists(post):
             print(f"{post} file not exists!")
@@ -361,15 +366,19 @@ if __name__ == '__main__':
         print('title:', title)
         with open(post, 'r') as f:
             md_content = f.read()
-        task_list = [CookiesPool(conf).post(title, md_content) for conf in conf_list]
+        task_list = [CookiesPool(conf).post(title, md_content)
+                     for conf in conf_list]
         loop = asyncio.get_event_loop()
         loop.run_until_complete(asyncio.wait(task_list))
-    elif check:
+    elif check:  # Cookies验证
         task_list = [CookiesPool(conf).start(debug) for conf in conf_list]
+        if plat:
+            task_list = [CookiesPool(conf).start(debug) for conf in conf_list
+                         if plat == conf['platform']]
         print("start to check account cookies info:")
         asyncio.get_event_loop().run_until_complete(asyncio.wait(task_list))
 
-    else:
+    else:    # 用户信息管理
         if plat is None:
             print("plat is None")
             exit(1)
