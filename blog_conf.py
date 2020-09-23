@@ -44,7 +44,7 @@ config_list = [
     },
     {
         "platform": "csdn",             # Blog平台名称,必须
-        "has_captcha": False,               # 是否有验证码，有就等待30秒
+        "has_captcha": True,               # 是否有验证码，有就等待30秒
         'login_url': 'https://passport.csdn.net/login',
         'login_tab': 'div.main-select > ul > li:nth-child(2) > a',   # 登录TAB页面显示
         'ele_login': '#all',      # 用户名

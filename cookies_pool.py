@@ -338,7 +338,7 @@ if __name__ == '__main__':
                         help='发布Markdown文章,Markdown文件存放路径')
     parser.add_argument('-t', '--title', default=None, help='文章标题')
     parser.add_argument('-m', '--plat', default=None,
-                        help='Blog平台信息,支持平台:' + support_plat)
+                        help='Blog平台信息,支持平台:' + str(support_plat))
 
     # 调试模式开关
     parser.add_argument('-x', '--debug', default=True, help='调试模式')
